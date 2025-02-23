@@ -72,17 +72,17 @@ export default function Dashboard() {
                 .querySelector('meta[name="csrf-token"]')
                 ?.getAttribute("content");
 
-            const response = await fetch(
-                `/api/transactions${deleteTransactionId}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": csrfToken || "",
-                    },
-                    credentials: "same-origin",
-                }
-            );
+                const response = await fetch(
+                    `/api/transactions/${deleteTransactionId}`, // ✅ เพิ่ม `/` ข้างหน้า
+                    {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken || "",
+                        },
+                        credentials: "same-origin",
+                    }
+                );
 
             if (response.ok) {
                 console.log("✅ ลบธุรกรรมสำเร็จ");
@@ -109,13 +109,21 @@ export default function Dashboard() {
                 .querySelector('meta[name="csrf-token"]')
                 ?.getAttribute("content");
 
+            const token = localStorage.getItem("auth_token"); // ✅ ดึง Token ก่อนใช้
+            if (!token) {
+                console.error("❌ ไม่พบ Token กรุณาเข้าสู่ระบบใหม่");
+                return;
+            }
+
             const response = await fetch(
-                `/api/transactions${editTransaction.id}`,
+                `/api/transactions/${editTransaction.id}`, // ✅ ต้องใส่ `/` ข้างหน้า ID
                 {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
+                        Accept: "application/json",
                         "X-CSRF-TOKEN": csrfToken || "",
+                        Authorization: `Bearer ${token}`, // ✅ ใช้ Token ที่ดึงมา
                     },
                     credentials: "same-origin",
                     body: JSON.stringify(editTransaction),
@@ -135,6 +143,7 @@ export default function Dashboard() {
 
         setIsEditing(false);
     };
+
 
     // ✅ โหลดข้อมูลธุรกรรม
     const fetchTransactions = async () => {

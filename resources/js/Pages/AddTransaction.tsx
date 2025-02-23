@@ -134,7 +134,8 @@ const handleSubmit = async () => {
         if (transactionId) {
             response = await axios.put(`/api/transactions/${transactionId}`, transactionData, { headers });
         } else {
-            response = await axios.post("/api/transactions", transactionData, { headers });
+            const API_URL = import.meta.env.VITE_APP_API_URL; // ✅ ดึงค่าจาก .env
+            response = await axios.post(`${API_URL}/api/reports/update`, transactionData, { headers });
         }
 
         console.log("✅ Response จากเซิร์ฟเวอร์:", response.data);
