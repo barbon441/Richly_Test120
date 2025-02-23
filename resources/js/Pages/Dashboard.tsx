@@ -141,8 +141,7 @@ export default function Dashboard() {
         console.log("🔄 กำลังโหลดข้อมูลธุรกรรม...");
         try {
             const response = await fetch(`/transactions?user_id=${userId}`);
-            if (!response.ok)
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const data = await response.json();
             console.log("✅ รายการธุรกรรมที่โหลดมา:", data);
@@ -154,27 +153,20 @@ export default function Dashboard() {
                             ? new Date(t.created_at)
                             : t.date && !isNaN(Date.parse(t.date))
                             ? new Date(t.date)
-                            : null;
+                            : new Date(); // ✅ ใช้วันที่ปัจจุบันถ้าข้อมูลผิดพลาด
 
                     return {
                         ...t,
                         amount: Number(t.amount) || 0,
-                        date: transactionDate
-                            ? transactionDate.toISOString().split("T")[0]
-                            : "Invalid Date",
-                        timestamp: transactionDate
-                            ? transactionDate.getTime()
-                            : 0,
-                        category: t.category || "ไม่ระบุหมวดหมู่",
-                        icon: t.icon || "❓", // ✅ ใช้ `icon` จาก API
+                        date: transactionDate.toISOString().split("T")[0],
+                        timestamp: transactionDate.getTime(),
+                        category: t.category ?? "ไม่ระบุหมวดหมู่", // ✅ ใช้ ?? แทน || ป้องกันค่าที่เป็น null
+                        icon: t.icon ?? "❓", // ✅ ป้องกันไอคอนเป็น undefined
                     };
                 })
-                .sort(
-                    (a: Transaction, b: Transaction) =>
-                        b.timestamp - a.timestamp
-                );
+                .sort((a: Transaction, b: Transaction) => b.timestamp - a.timestamp);
 
-            console.log("🔢 Transactions (หลังจากแปลงค่า):", transactions); // ✅ Debug ดูค่า
+            console.log("🔢 Transactions (หลังจากแปลงค่า):", transactions);
 
             setTransactions(transactions);
 
@@ -186,12 +178,9 @@ export default function Dashboard() {
             // ✅ คำนวณรายจ่าย
             const expense = transactions
                 .filter((t: Transaction) => t.amount < 0)
-                .reduce(
-                    (sum: number, t: Transaction) => sum + Math.abs(t.amount),
-                    0
-                );
+                .reduce((sum: number, t: Transaction) => sum + Math.abs(t.amount), 0);
 
-            console.log("💰 รายรับ:", income, "💸 รายจ่าย:", expense); // ✅ Debug ดูค่า
+            console.log("💰 รายรับ:", income, "💸 รายจ่าย:", expense);
 
             // ✅ อัปเดตค่าตัวแปร
             setTotalIncome(income);
@@ -202,19 +191,18 @@ export default function Dashboard() {
         }
     };
 
+
     // ✅ โหลดข้อมูลเมื่อเปิดหน้า และอัปเดตเมื่อมีการเพิ่มธุรกรรม
     useEffect(() => {
         if (userId) {
-            // ✅ โหลดเมื่อ userId มีค่า
-            fetchTransactions();
-            window.addEventListener("transactionAdded", fetchTransactions);
-            return () =>
-                window.removeEventListener(
-                    "transactionAdded",
-                    fetchTransactions
-                );
+            fetchTransactions(); // ✅ โหลดธุรกรรมเมื่อเปิดหน้า
+            window.addEventListener("transactionAdded", fetchTransactions); // ✅ ฟัง event transactionAdded
+
+            return () => {
+                window.removeEventListener("transactionAdded", fetchTransactions);
+            };
         }
-    }, [userId]); // ✅ โหลดใหม่เมื่อ userId เปลี่ยน
+    }, [userId]);     // ✅ โหลดใหม่เมื่อ userId เปลี่ยน
 
     return (
         <AuthenticatedLayout>

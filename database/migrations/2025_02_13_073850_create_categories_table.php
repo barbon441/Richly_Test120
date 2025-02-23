@@ -13,10 +13,13 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->string('type'); // income หรือ expense
+            $table->string('name');
+            $table->string('type'); // ✅ เพิ่ม type เพื่อแยกหมวดหมู่
             $table->string('icon')->nullable();
             $table->timestamps();
+
+            // ✅ ทำให้ `name` ซ้ำกันได้ แต่ต้อง `unique` คู่กับ `type`
+            $table->unique(['name', 'type']);
         });
     }
 

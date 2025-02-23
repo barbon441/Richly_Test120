@@ -24,16 +24,16 @@ class Report extends Model
     public function calculateReport()
     {
         $transactions = Transaction::where('user_id', $this->user_id)
-            ->whereBetween('date', [$this->start_date, $this->end_date])
+            ->whereBetween('transaction_date', [$this->start_date, $this->end_date])
             ->get();
 
-        $totalIncome = $transactions->where('amount', '>', 0)->sum('amount');
-        $totalExpense = $transactions->where('amount', '<', 0)->sum('amount');
-        $balance = $totalIncome + $totalExpense;
+        $totalIncome = $transactions->where('transaction_type', 'income')->sum('amount');
+        $totalExpense = $transactions->where('transaction_type', 'expense')->sum('amount');
+        $balance = $totalIncome - $totalExpense;
 
         $this->update([
             'total_income' => $totalIncome,
-            'total_expense' => abs($totalExpense),
+            'total_expense' => $totalExpense,
             'balance' => $balance,
         ]);
     }
