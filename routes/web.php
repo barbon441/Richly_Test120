@@ -2,40 +2,29 @@
 
 use Inertia\Inertia;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TransactionController;
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 
+// ✅ หน้า Home
 Route::get('/', function () {
     return Inertia::render('Home');
-})->name('home'); // ✅ กำหนดให้ Home เป็นหน้าหลัก
+})->name('home');
 
-
+// ✅ ใช้ Middleware `auth` สำหรับหน้าเว็บที่ต้อง Login เท่านั้น
 Route::middleware(['auth'])->group(function () {
+
+    // ✅ หน้า Dashboard
     Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->name('dashboard');
-});
 
-Route::middleware(['auth'])->group(function () {
+    // ✅ หน้าเพิ่มธุรกรรม (แสดงหน้า AddTransaction)
     Route::get('/transactions/add', fn () => Inertia::render('AddTransaction'))->name('transactions.add');
-    Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
-    Route::get('/transactions', [TransactionController::class, 'index']);
-});
 
-Route::put('/transactions/{id}', [TransactionController::class, 'update']);
-Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
-Route::get('/transactions/{id}', [TransactionController::class, 'show']);
-
-Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-Route::post('/budgets', [BudgetController::class, 'store']);
-Route::post('/reports/update', [ReportsController::class, 'updateReport']);
-
-Route::middleware(['auth'])->group(function () {
+    // ✅ หน้าแก้ไข Profile
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
 });
 
+// ✅ ต้องใช้ `auth.php` สำหรับ Authentication Routes (Register, Forgot Password, Reset Password)
 require __DIR__.'/auth.php';

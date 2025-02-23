@@ -90,10 +90,10 @@ class TransactionController extends Controller
                 $this->updateBudget($userId, $category->id, $validatedData['amount']);
             }
             // ✅ เรียก API อัปเดตรายงานหลังจากบันทึกธุรกรรมสำเร็จ
-            app(\App\Http\Controllers\ReportsController::class)->updateReport(new \Illuminate\Http\Request([
+            Http::post(env('APP_URL') . '/api/reports/update', [
                 'transaction_date' => $validatedData['transaction_date']
-            ]));
-            
+            ]);
+
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
 
 

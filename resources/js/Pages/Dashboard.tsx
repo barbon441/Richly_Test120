@@ -73,7 +73,7 @@ export default function Dashboard() {
                 ?.getAttribute("content");
 
             const response = await fetch(
-                `/transactions/${deleteTransactionId}`,
+                `/api/transactions${deleteTransactionId}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -110,7 +110,7 @@ export default function Dashboard() {
                 ?.getAttribute("content");
 
             const response = await fetch(
-                `/transactions/${editTransaction.id}`,
+                `/api/transactions${editTransaction.id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -139,35 +139,51 @@ export default function Dashboard() {
     // ✅ โหลดข้อมูลธุรกรรม
     const fetchTransactions = async () => {
         console.log("🔄 กำลังโหลดข้อมูลธุรกรรม...");
+
         try {
-            const response = await fetch(`/transactions?user_id=${userId}`);
+             // ✅ เรียก `/sanctum/csrf-cookie` ก่อน เพื่อให้ Sanctum รับ Token
+            await fetch("/sanctum/csrf-cookie", { method: "GET", credentials: "include" });
+            const token = localStorage.getItem("auth_token"); // ⬅️ ถ้าใช้ Sanctum ควรดึง Token
+            console.log("🛠️ Token ที่ใช้:", token);
+            const response = await fetch("/api/transactions", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    Authorization: `Bearer ${token}`, // ⬅️ เพิ่ม Header Authorization ถ้าจำเป็น
+                },
+            });
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const data = await response.json();
             console.log("✅ รายการธุรกรรมที่โหลดมา:", data);
 
-            const transactions = (data.transactions || [])
-                .map((t: Transaction) => {
-                    let transactionDate =
-                        t.created_at && !isNaN(Date.parse(t.created_at))
-                            ? new Date(t.created_at)
-                            : t.date && !isNaN(Date.parse(t.date))
-                            ? new Date(t.date)
-                            : new Date(); // ✅ ใช้วันที่ปัจจุบันถ้าข้อมูลผิดพลาด
+            if (!data.transactions) {
+                console.error("❌ ไม่มีข้อมูลธุรกรรมที่โหลดมา!");
+                setTransactions([]); // ป้องกันกรณี response ว่าง
+                return;
+            }
 
-                    return {
-                        ...t,
-                        amount: Number(t.amount) || 0,
-                        date: transactionDate.toISOString().split("T")[0],
-                        timestamp: transactionDate.getTime(),
-                        category: t.category ?? "ไม่ระบุหมวดหมู่", // ✅ ใช้ ?? แทน || ป้องกันค่าที่เป็น null
-                        icon: t.icon ?? "❓", // ✅ ป้องกันไอคอนเป็น undefined
-                    };
-                })
-                .sort((a: Transaction, b: Transaction) => b.timestamp - a.timestamp);
+            const transactions = data.transactions.map((t: Transaction) => {
+                let transactionDate =
+                    t.created_at && !isNaN(Date.parse(t.created_at))
+                        ? new Date(t.created_at)
+                        : t.date && !isNaN(Date.parse(t.date))
+                        ? new Date(t.date)
+                        : new Date(); // ✅ ใช้วันที่ปัจจุบันถ้าข้อมูลผิดพลาด
+
+                return {
+                    ...t,
+                    amount: Number(t.amount) || 0,
+                    date: transactionDate.toISOString().split("T")[0],
+                    timestamp: transactionDate.getTime(),
+                    category: t.category ?? "ไม่ระบุหมวดหมู่",
+                    icon: t.icon ?? "❓",
+                };
+            });
 
             console.log("🔢 Transactions (หลังจากแปลงค่า):", transactions);
-
             setTransactions(transactions);
 
             // ✅ คำนวณรายรับ
@@ -188,8 +204,10 @@ export default function Dashboard() {
             setTotalBalance(income - expense);
         } catch (error) {
             console.error("❌ เกิดข้อผิดพลาดในการโหลดธุรกรรม:", error);
+            setTransactions([]); // ป้องกัน UI พัง
         }
     };
+
 
 
     // ✅ โหลดข้อมูลเมื่อเปิดหน้า และอัปเดตเมื่อมีการเพิ่มธุรกรรม

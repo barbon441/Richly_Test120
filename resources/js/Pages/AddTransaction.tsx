@@ -101,6 +101,24 @@ const handleSubmit = async () => {
         return;
     }
 
+    // ✅ ดึง Token จาก Local Storage หรือ Context
+    const token = localStorage.getItem("auth_token");
+    console.log("🔎 Token ที่ใช้:", token);
+
+    if (!token) {
+        console.error("❌ ไม่พบ Token กรุณาเข้าสู่ระบบใหม่");
+        return;
+    }
+
+    const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`, // ✅ ตรวจสอบว่า Token ถูกส่งไป
+    };
+
+
+
+
     const transactionData = {
         category_id: category,
         amount: finalAmount,
@@ -114,9 +132,9 @@ const handleSubmit = async () => {
     try {
         let response;
         if (transactionId) {
-            response = await axios.put(`/transactions/${transactionId}`, transactionData);
+            response = await axios.put(`/api/transactions/${transactionId}`, transactionData, { headers });
         } else {
-            response = await axios.post("/transactions", transactionData);
+            response = await axios.post("/api/transactions", transactionData, { headers });
         }
 
         console.log("✅ Response จากเซิร์ฟเวอร์:", response.data);
@@ -127,19 +145,17 @@ const handleSubmit = async () => {
             window.dispatchEvent(new Event("transactionAdded")); // ✅ แจ้งให้ Dashboard โหลดข้อมูลใหม่
 
             console.log("🔄 กำลังเปลี่ยนหน้าไปยัง Dashboard...");
-            router.visit("/dashboard", {
-                method: "get",
-                replace: true, // ✅ บังคับให้เปลี่ยนหน้าใหม่แทนการ push
-                onSuccess: () => console.log("✅ เปลี่ยนหน้าไป Dashboard สำเร็จ"),
-                onError: (err) => console.error("❌ เกิดข้อผิดพลาดในการเปลี่ยนหน้า:", err),
-            });
+            window.location.href = "/dashboard"; // ✅ ใช้ window.location แทน router.visit()
         } else {
             console.error("❌ บันทึกข้อมูลล้มเหลว:", response.status);
         }
     } catch (error: any) {
         console.error("❌ Error ในการบันทึก:", error.response?.data || error.message);
+    } finally {
+        setLoading(false); // 🔄 ปิด Loader
     }
 };
+
 
 // ✅ ปุ่มบันทึกที่มี Loader
 <button

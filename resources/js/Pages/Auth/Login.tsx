@@ -14,12 +14,32 @@ export default function Login({
         remember: false as boolean,
     });
 
-    const submit: FormEventHandler = (e) => {
+    const submit: FormEventHandler = async (e) => {
         e.preventDefault();
+
         post(route("login"), {
-            onFinish: () => reset("password"),
+            onSuccess: (page) => {
+                console.log("🔑 Response จาก API:", page);
+
+                if (page.props.auth?.user) {
+                    // ✅ บันทึก Token ลง LocalStorage (ต้องได้รับจาก Backend)
+                    localStorage.setItem("auth_token", page.props.auth.token);
+                    localStorage.setItem("user", JSON.stringify(page.props.auth.user));
+
+                    console.log("✅ Token ถูกบันทึก:", page.props.auth.token);
+
+                    // ✅ เปลี่ยนเส้นทางไปยัง Dashboard
+                    window.location.href = "/dashboard";
+                } else {
+                    console.error("❌ ไม่ได้รับ Token จาก API");
+                }
+            },
+            onError: (error) => {
+                console.error("❌ ล็อกอินไม่สำเร็จ:", error);
+            },
         });
     };
+
 
     return (
         <div className="flex flex-col md:flex-row min-h-screen items-center justify-center bg-amber-100 p-10">
