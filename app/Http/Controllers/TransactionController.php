@@ -45,10 +45,12 @@ class TransactionController extends Controller
     //อ่านข้อมูลจาก Request และบันทึกข้อมูลลงฐานข้อมูล
     public function store(Request $request)
     {
+        $startTime = microtime(true); // ⏳ เริ่มจับเวลา
+
         try {
             Log::info("📥 Data received in Backend:", $request->all());
 
-            // ✅ ตรวจสอบข้อมูลที่ส่งมา
+            // ✅ ตรวจสอบข้อมูล
             $validatedData = $request->validate([
                 'amount' => 'required|numeric',
                 'transaction_type' => 'required|in:income,expense',
@@ -57,13 +59,13 @@ class TransactionController extends Controller
                 'description' => 'nullable|string',
             ]);
 
-            // ✅ ดึง user_id ของผู้ใช้
+            // ✅ ดึง user_id
             $userId = Auth::id();
             if (!$userId) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
             }
 
-            // ✅ ตรวจสอบว่า category_id ถูกต้อง และตรงกับ transaction_type
+            // ✅ ตรวจสอบหมวดหมู่
             $category = Category::find($validatedData['category_id']);
             if (!$category || $category->type !== $validatedData['transaction_type']) {
                 return response()->json([
@@ -72,7 +74,7 @@ class TransactionController extends Controller
                 ], 400);
             }
 
-            // ✅ บันทึกธุรกรรมลงฐานข้อมูล
+            // ✅ บันทึกธุรกรรม
             $transaction = Transaction::create([
                 'user_id'           => $userId,
                 'category_id'       => $category->id,
@@ -83,6 +85,15 @@ class TransactionController extends Controller
             ]);
 
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
+
+            // ⏳ จับเวลาการอัปเดตรายงาน
+            $reportStartTime = microtime(true);
+            $this->updateReport($userId, $validatedData['transaction_date']);
+            $reportEndTime = microtime(true);
+            Log::info("⏳ เวลาในการอัปเดตรายงาน: " . round(($reportEndTime - $reportStartTime), 3) . " วินาที");
+
+            $endTime = microtime(true); // ⏳ สิ้นสุดการจับเวลา
+            Log::info("⏳ เวลาทำงานทั้งหมดของ store(): " . round(($endTime - $startTime), 3) . " วินาที");
 
             return response()->json([
                 'success' => true,
@@ -99,47 +110,51 @@ class TransactionController extends Controller
         }
     }
 
+
+
+
     /**
      * ✅ ฟังก์ชันสำหรับอัปเดตรายงานในตาราง `reports`
      */
-    private function updateReport($userId, $date)
+    private function updateReport($userId, $transactionDate)
     {
-        // ค้นหารายงานที่มีช่วงเวลาตรงกับธุรกรรม หรือสร้างใหม่
-        $report = Report::firstOrCreate(
-            [
-                'user_id' => $userId,
-                'start_date' => date('Y-m-01', strtotime($date)), // เริ่มต้นเดือน
-                'end_date' => date('Y-m-t', strtotime($date)), // สิ้นเดือน
-            ],
-            [
-                'total_income' => 0,
-                'total_expense' => 0,
-                'balance' => 0,
-            ]
-        );
+        try {
+            Log::info("📊 กำลังอัปเดตรายงานสำหรับผู้ใช้ $userId วันที่ $transactionDate");
 
-        // ✅ คำนวณรายรับ-รายจ่ายใหม่
-        $totalIncome = Transaction::where('user_id', $userId)
-            ->where('transaction_type', 'income')
-            ->whereBetween('transaction_date', [$report->start_date, $report->end_date])
-            ->sum('amount');
+            // ✅ คำนวณรายรับและรายจ่ายใหม่
+            $totalIncome = Transaction::where('user_id', $userId)
+                ->where('transaction_type', 'income')
+                ->whereBetween('transaction_date', [date('Y-m-01', strtotime($transactionDate)), date('Y-m-t', strtotime($transactionDate))])
+                ->sum('amount');
 
-        $totalExpense = Transaction::where('user_id', $userId)
-            ->where('transaction_type', 'expense')
-            ->whereBetween('transaction_date', [$report->start_date, $report->end_date])
-            ->sum('amount');
+            $totalExpense = Transaction::where('user_id', $userId)
+                ->where('transaction_type', 'expense')
+                ->whereBetween('transaction_date', [date('Y-m-01', strtotime($transactionDate)), date('Y-m-t', strtotime($transactionDate))])
+                ->sum('amount');
 
-        $balance = $totalIncome - $totalExpense;
+            $balance = $totalIncome - $totalExpense;
 
-        // ✅ อัปเดตค่ารายงาน
-        $report->update([
-            'total_income' => $totalIncome,
-            'total_expense' => $totalExpense,
-            'balance' => $balance,
-        ]);
+            // ✅ ค้นหาหรือสร้าง `report`
+            $report = Report::updateOrCreate(
+                [
+                    'user_id' => $userId,
+                    'start_date' => date('Y-m-01', strtotime($transactionDate)),
+                    'end_date' => date('Y-m-t', strtotime($transactionDate)),
+                ],
+                [
+                    'total_income' => $totalIncome,
+                    'total_expense' => $totalExpense,
+                    'balance' => $balance,
+                ]
+            );
+
+            Log::info("📊 รายงานอัปเดตสำเร็จ: รายรับ = $totalIncome, รายจ่าย = $totalExpense, คงเหลือ = $balance");
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error ในการอัปเดตรายงาน: " . $e->getMessage());
+            throw new \Exception("❌ เกิดข้อผิดพลาดขณะอัปเดตรายงาน: " . $e->getMessage());
+        }
     }
-
-
 
     /**
      * Display the specified resource.

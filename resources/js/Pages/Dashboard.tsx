@@ -202,7 +202,7 @@ export default function Dashboard() {
                 window.removeEventListener("transactionAdded", fetchTransactions);
             };
         }
-    }, [userId]);     // ✅ โหลดใหม่เมื่อ userId เปลี่ยน
+    }, [userId]);      // ✅ โหลดใหม่เมื่อ userId เปลี่ยน
 
     return (
         <AuthenticatedLayout>

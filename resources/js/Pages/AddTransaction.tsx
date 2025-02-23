@@ -2,7 +2,6 @@ import { router } from "@inertiajs/react";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-
 const expenseCategories = [
   { id: 1, name: "อาหาร", icon: "🍔" },
   { id: 2, name: "การเดินทาง", icon: "🚗" },
@@ -79,18 +78,21 @@ const AddTransaction = () => {
   const handleDelete = () => {
     setAmount((prev) => prev.slice(0, -1));
   };
+const [loading, setLoading] = useState(false); // ✅ เพิ่ม State สำหรับ Loader
 
-  // ส่งข้อมูลธุรกรรม (POST หรือ PUT)
-  const handleSubmit = async () => {
+// ✅ ส่งข้อมูลธุรกรรม (POST หรือ PUT)
+const handleSubmit = async () => {
     if (!amount) {
         console.error("❌ กรุณากรอกจำนวนเงินที่ถูกต้อง");
         return;
     }
 
+    setLoading(true); // ⏳ เปิด Loader ขณะบันทึก
+
     const finalAmount =
-    transactionType === "expense"
-        ? `-${Math.abs(Number(amount))}`
-        : `${Math.abs(Number(amount))}`;
+        transactionType === "expense"
+            ? `-${Math.abs(Number(amount))}`
+            : `${Math.abs(Number(amount))}`;
 
     const transaction_date = new Date().toISOString().split("T")[0];
 
@@ -99,26 +101,8 @@ const AddTransaction = () => {
         return;
     }
 
-    const selectedCategory = categories.find((cat) => cat.id === category);
-    if (!selectedCategory) {
-        console.error("❌ ไม่พบ category ที่เลือก!");
-        return;
-    }
-
-    const csrfToken =
-    document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
-    if (!csrfToken) {
-        console.error("❌ ไม่พบ CSRF Token");
-        return;
-    }
-
-    const headers = {
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": csrfToken,
-    };
-
     const transactionData = {
-        category_id: category, // ส่ง category_id เท่านั้น
+        category_id: category,
         amount: finalAmount,
         transaction_type: transactionType,
         description: note,
@@ -130,18 +114,20 @@ const AddTransaction = () => {
     try {
         let response;
         if (transactionId) {
-            response = await axios.put(`/transactions/${transactionId}`, transactionData, { headers });
+            response = await axios.put(`/transactions/${transactionId}`, transactionData);
         } else {
-            response = await axios.post("/transactions", transactionData, { headers });
+            response = await axios.post("/transactions", transactionData);
         }
 
         console.log("✅ Response จากเซิร์ฟเวอร์:", response.data);
 
-        if (response.status === 200 || response.status === 201) {
+        if (response.status >= 200 && response.status < 300) {
             console.log("✅ ธุรกรรมถูกบันทึกเรียบร้อย!");
-            window.dispatchEvent(new Event("transactionAdded")); // ✅ แจ้ง event ให้ `Dashboard.tsx` โหลดข้อมูลใหม่
+
+            window.dispatchEvent(new Event("transactionAdded")); // ✅ แจ้งให้ Dashboard โหลดข้อมูลใหม่
+
             console.log("🔄 กำลังเปลี่ยนหน้าไปยัง Dashboard...");
-            window.location.href = "/dashboard"; // ✅ ใช้ window.location เป็น fallback
+            router.visit("/dashboard"); // ✅ ใช้ Inertia.js router.visit() แทน useNavigate()
         } else {
             console.error("❌ บันทึกข้อมูลล้มเหลว:", response.status);
         }
@@ -149,6 +135,16 @@ const AddTransaction = () => {
         console.error("❌ Error ในการบันทึก:", error.response?.data || error.message);
     }
 };
+
+// ✅ ปุ่มบันทึกที่มี Loader
+<button
+    onClick={handleSubmit}
+    disabled={loading} // ❌ ปิดปุ่มถ้า API กำลังทำงาน
+    className="p-4 rounded-lg text-2xl font-semibold bg-green-500 hover:bg-green-600 text-white"
+>
+    {loading ? "⏳ กำลังบันทึก..." : "✅ บันทึก"}
+</button>
+
 
   return (
     <div className="min-h-screen bg-amber-50">
