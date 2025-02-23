@@ -31,6 +31,8 @@ Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->
 Route::get('/transactions/{id}', [TransactionController::class, 'show']);
 
 Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+Route::post('/budgets', [BudgetController::class, 'store']);
+Route::post('/reports/update', [ReportsController::class, 'updateReport']);
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');

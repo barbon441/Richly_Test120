@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\UpdateReportJob;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
@@ -85,10 +85,18 @@ class TransactionController extends Controller
                 'transaction_date'  => $validatedData['transaction_date'],
             ]);
 
+            // ✅ อัปเดตงบประมาณเฉพาะกรณีเป็นรายจ่าย
+            if ($validatedData['transaction_type'] === 'expense') {
+                $this->updateBudget($userId, $category->id, $validatedData['amount']);
+            }
+            // ✅ เรียก API อัปเดตรายงานหลังจากบันทึกธุรกรรมสำเร็จ
+            app(\App\Http\Controllers\ReportsController::class)->updateReport(new \Illuminate\Http\Request([
+                'transaction_date' => $validatedData['transaction_date']
+            ]));
+            
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
 
-            // ✅ ใช้ Queue เพื่ออัปเดตรายงาน (ไม่ต้องรอให้เสร็จ)
-            dispatch(new UpdateReportJob($userId, $validatedData['transaction_date']));
+
 
             $endTime = microtime(true); // ⏳ สิ้นสุดการจับเวลา
             Log::info("⏳ เวลาทำงานทั้งหมดของ store(): " . round(($endTime - $startTime), 3) . " วินาที");
@@ -104,6 +112,21 @@ class TransactionController extends Controller
             ], 500);
         }
     }
+
+    private function updateBudget($userId, $categoryId, $amount)
+{
+    $budget = Budget::where('user_id', $userId)
+        ->where('category_id', $categoryId)
+        ->whereDate('start_date', '<=', now())
+        ->whereDate('end_date', '>=', now())
+        ->first();
+
+    if ($budget) {
+        $budget->increment('amount_spent', abs($amount)); // อัปเดตจำนวนเงินที่ใช้ไป
+        Log::info("✅ อัปเดตงบประมาณ หมวดหมู่ $categoryId: ใช้ไปแล้ว {$budget->amount_spent}/{$budget->amount_limit}");
+    }
+}
+
 
     /**
      * Display the specified resource.

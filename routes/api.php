@@ -13,4 +13,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::post('/budgets', [BudgetController::class, 'store']);
+    Route::post('/reports/update', [ReportsController::class, 'updateReport']);
 });
