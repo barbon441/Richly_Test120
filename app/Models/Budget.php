@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Budget extends Model
 {
@@ -12,18 +13,39 @@ class Budget extends Model
     protected $fillable = [
         'user_id',
         'category_id',
-        'amount',
+        'amount_limit',
+        'amount_spent', // ✅ เพิ่มให้สามารถอัปเดตค่าได้
         'start_date',
         'end_date',
     ];
 
-    public function user()
+    /**
+     * ความสัมพันธ์กับ Transactions
+     */
+    public function transactions()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(Transaction::class, 'category_id', 'category_id')
+                    ->whereBetween('date', [$this->start_date, $this->end_date]);
     }
 
-    public function category()
+    /**
+     * อัปเดต amount_spent อัตโนมัติเมื่อธุรกรรมมีการเปลี่ยนแปลง
+     */
+    public function updateAmountSpent()
     {
-        return $this->belongsTo(Category::class);
+        $this->amount_spent = $this->transactions()->sum('amount');
+        $this->save();
+    }
+
+    /**
+     * Boot Method สำหรับอัปเดตงบประมาณเมื่อมีการเปลี่ยนแปลงธุรกรรม
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($budget) {
+            $budget->updateAmountSpent();
+        });
     }
 }
