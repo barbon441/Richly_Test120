@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\UpdateReportJob;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
@@ -86,20 +87,14 @@ class TransactionController extends Controller
 
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
 
-            // ⏳ จับเวลาการอัปเดตรายงาน
-            $reportStartTime = microtime(true);
-            $this->updateReport($userId, $validatedData['transaction_date']);
-            $reportEndTime = microtime(true);
-            Log::info("⏳ เวลาในการอัปเดตรายงาน: " . round(($reportEndTime - $reportStartTime), 3) . " วินาที");
+            // ✅ ใช้ Queue เพื่ออัปเดตรายงาน (ไม่ต้องรอให้เสร็จ)
+            dispatch(new UpdateReportJob($userId, $validatedData['transaction_date']));
 
             $endTime = microtime(true); // ⏳ สิ้นสุดการจับเวลา
             Log::info("⏳ เวลาทำงานทั้งหมดของ store(): " . round(($endTime - $startTime), 3) . " วินาที");
 
-            return response()->json([
-                'success' => true,
-                'message' => 'เพิ่มธุรกรรมสำเร็จ!',
-                'transaction' => $transaction
-            ], 201);
+            // ✅ Redirect กลับไปหน้าหลัก
+            return redirect()->route('dashboard')->with('success', 'ธุรกรรมถูกบันทึกแล้ว');
 
         } catch (\Exception $e) {
             Log::error("❌ Error ในการบันทึกธุรกรรม: " . $e->getMessage());
@@ -107,52 +102,6 @@ class TransactionController extends Controller
                 'success' => false,
                 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
             ], 500);
-        }
-    }
-
-
-
-
-    /**
-     * ✅ ฟังก์ชันสำหรับอัปเดตรายงานในตาราง `reports`
-     */
-    private function updateReport($userId, $transactionDate)
-    {
-        try {
-            Log::info("📊 กำลังอัปเดตรายงานสำหรับผู้ใช้ $userId วันที่ $transactionDate");
-
-            // ✅ คำนวณรายรับและรายจ่ายใหม่
-            $totalIncome = Transaction::where('user_id', $userId)
-                ->where('transaction_type', 'income')
-                ->whereBetween('transaction_date', [date('Y-m-01', strtotime($transactionDate)), date('Y-m-t', strtotime($transactionDate))])
-                ->sum('amount');
-
-            $totalExpense = Transaction::where('user_id', $userId)
-                ->where('transaction_type', 'expense')
-                ->whereBetween('transaction_date', [date('Y-m-01', strtotime($transactionDate)), date('Y-m-t', strtotime($transactionDate))])
-                ->sum('amount');
-
-            $balance = $totalIncome - $totalExpense;
-
-            // ✅ ค้นหาหรือสร้าง `report`
-            $report = Report::updateOrCreate(
-                [
-                    'user_id' => $userId,
-                    'start_date' => date('Y-m-01', strtotime($transactionDate)),
-                    'end_date' => date('Y-m-t', strtotime($transactionDate)),
-                ],
-                [
-                    'total_income' => $totalIncome,
-                    'total_expense' => $totalExpense,
-                    'balance' => $balance,
-                ]
-            );
-
-            Log::info("📊 รายงานอัปเดตสำเร็จ: รายรับ = $totalIncome, รายจ่าย = $totalExpense, คงเหลือ = $balance");
-
-        } catch (\Exception $e) {
-            Log::error("❌ Error ในการอัปเดตรายงาน: " . $e->getMessage());
-            throw new \Exception("❌ เกิดข้อผิดพลาดขณะอัปเดตรายงาน: " . $e->getMessage());
         }
     }
 

@@ -127,7 +127,12 @@ const handleSubmit = async () => {
             window.dispatchEvent(new Event("transactionAdded")); // ✅ แจ้งให้ Dashboard โหลดข้อมูลใหม่
 
             console.log("🔄 กำลังเปลี่ยนหน้าไปยัง Dashboard...");
-            router.visit("/dashboard"); // ✅ ใช้ Inertia.js router.visit() แทน useNavigate()
+            router.visit("/dashboard", {
+                method: "get",
+                replace: true, // ✅ บังคับให้เปลี่ยนหน้าใหม่แทนการ push
+                onSuccess: () => console.log("✅ เปลี่ยนหน้าไป Dashboard สำเร็จ"),
+                onError: (err) => console.error("❌ เกิดข้อผิดพลาดในการเปลี่ยนหน้า:", err),
+            });
         } else {
             console.error("❌ บันทึกข้อมูลล้มเหลว:", response.status);
         }
