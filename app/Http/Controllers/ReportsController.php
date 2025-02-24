@@ -23,50 +23,49 @@ class ReportsController extends Controller
 
             Log::info("📊 อัปเดตรายงานสำหรับผู้ใช้ $userId วันที่ $transactionDate");
 
-            // ✅ ดึงช่วงวันที่ของเดือนปัจจุบัน
+            // ✅ กำหนดช่วงเวลาของเดือน
             $startDate = date('Y-m-01', strtotime($transactionDate));
             $endDate = date('Y-m-t', strtotime($transactionDate));
 
-            // ✅ ดึงข้อมูลธุรกรรมของเดือนนั้น
-            $transactions = Transaction::where('user_id', $userId)
+            // ✅ คำนวณรายรับและรายจ่าย
+            $totalIncome = Transaction::where('user_id', $userId)
                 ->whereBetween('transaction_date', [$startDate, $endDate])
-                ->selectRaw("
-                    SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END) as total_income,
-                    SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END) as total_expense
-                ")
+                ->where('transaction_type', 'income')
+                ->sum('amount');
+
+            $totalExpense = Transaction::where('user_id', $userId)
+                ->whereBetween('transaction_date', [$startDate, $endDate])
+                ->where('transaction_type', 'expense')
+                ->sum('amount');
+
+            // ✅ ตรวจสอบว่ามีรายงานอยู่แล้วหรือไม่
+            $report = Report::where('user_id', $userId)
+                ->where('start_date', $startDate)
                 ->first();
 
-            $totalIncome = $transactions->total_income ?? 0;
-            $totalExpense = $transactions->total_expense ?? 0;
-            $balance = $totalIncome - $totalExpense; // ✅ คำนวณคงเหลือที่ถูกต้อง
-
-            // ✅ ใช้ updateOrCreate() เพื่อบันทึกหรืออัปเดตรายงาน
-            Report::updateOrCreate(
-                [
+            if ($report) {
+                // ✅ อัปเดตรายงานเดิม
+                $report->update([
+                    'total_income' => $totalIncome,
+                    'total_expense' => abs($totalExpense), // ✅ บันทึกเป็นค่าบวก
+                    'balance' => $totalIncome - abs($totalExpense),
+                ]);
+            } else {
+                // ✅ สร้างรายงานใหม่
+                Report::create([
                     'user_id' => $userId,
                     'start_date' => $startDate,
                     'end_date' => $endDate,
-                ],
-                [
                     'total_income' => $totalIncome,
-                    'total_expense' => $totalExpense,
-                    'balance' => $balance, // ✅ บันทึกค่าคงเหลือที่ถูกต้อง
-                ]
-            );
+                    'total_expense' => abs($totalExpense), // ✅ บันทึกเป็นค่าบวก
+                    'balance' => $totalIncome - abs($totalExpense),
+                ]);
+            }
 
-            Log::info("✅ รายงานอัปเดตสำเร็จ: รายรับ = $totalIncome, รายจ่าย = $totalExpense, คงเหลือ = $balance");
-
-            return response()->json([
-                'success' => true,
-                'message' => 'อัปเดตรายงานสำเร็จ!',
-            ], 200);
-
+            return response()->json(['success' => true, 'message' => 'รายงานอัปเดตเรียบร้อย']);
         } catch (\Exception $e) {
-            Log::error("❌ Error ในการอัปเดตรายงาน: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
-            ], 500);
+            Log::error("❌ เกิดข้อผิดพลาดในการอัปเดตรายงาน: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'เกิดข้อผิดพลาด'], 500);
         }
     }
 }

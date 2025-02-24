@@ -80,15 +80,18 @@ class TransactionController extends Controller
             $transaction = Transaction::create([
                 'user_id'           => $userId,
                 'category_id'       => $category->id,
-                'amount'            => $validatedData['amount'],
+                'amount' => $validatedData['transaction_type'] === 'expense'
+                ? -abs($validatedData['amount']) // ✅ บันทึกค่าเป็นลบสำหรับรายจ่าย
+                : abs($validatedData['amount']),  // ✅ บันทึกค่าปกติสำหรับรายรับ
                 'transaction_type'  => $validatedData['transaction_type'],
                 'description'       => $validatedData['description'] ?? null,
                 'transaction_date'  => $validatedData['transaction_date'],
             ]);
 
-
-              // ✅ เรียกใช้ ReportsController เพื่ออัปเดตข้อมูลรายงาน
-              app(ReportsController::class)->updateReport(new Request(['transaction_date' => $validatedData['transaction_date']]));
+               // ✅ เรียกใช้งาน updateReport อัตโนมัติ
+                (new ReportsController)->updateReport(new Request([
+                    'transaction_date' => $validatedData['transaction_date']
+                ]));
 
             // ✅ เรียก API อัปเดตรายงานหลังจากบันทึกธุรกรรมสำเร็จ
             app(ReportsController::class)->updateReport(new Request([
