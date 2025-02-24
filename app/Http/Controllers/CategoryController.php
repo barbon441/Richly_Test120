@@ -9,9 +9,8 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-    $type = $request->query('type');
-    $categories = Category::where('type', $type)->get();
-
-    return response()->json($categories);
+        $categories = Category::all(); // ✅ ดึงหมวดหมู่ทั้งหมด
+        return response()->json($categories);
     }
+
 }

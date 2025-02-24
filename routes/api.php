@@ -5,6 +5,8 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CategoryController;
+use Illuminate\Http\Request;
+use App\Http\Controllers\SummaryController;
 
 // ✅ ใช้ Middleware `auth:sanctum` เพื่อให้ API ใช้ได้เฉพาะ User ที่ล็อกอิน
 Route::middleware('auth:sanctum')->group(function () {
@@ -26,4 +28,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ✅ API สำหรับอัปเดตรายงาน
     Route::post('/reports/update', [ReportsController::class, 'updateReport']);
+
+    
+    Route::get('summary', [SummaryController::class, 'getSummaryData']);
+});
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/budgets', [BudgetController::class, 'store']); // API สำหรับบันทึกงบประมาณ
+    Route::get('/budgets', [BudgetController::class, 'index']); // API ดึงข้อมูลงบประมาณ
+    Route::get('/budgets/{id}', [BudgetController::class, 'show']); // API ดึงงบประมาณที่เลือก
+    Route::put('/budgets/{id}', [BudgetController::class, 'update']); // API แก้ไขงบประมาณ
+    Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']); // API ลบงบประมาณ
 });

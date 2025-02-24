@@ -24,7 +24,17 @@ Route::middleware(['auth'])->group(function () {
 
     // ✅ หน้าแก้ไข Profile
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
+
+    Route::get('/add-budget', function () {
+        return Inertia::render('AddBudget');
+    })->name('add-budget');
+
+    Route::get('/summary', function () {
+        return Inertia::render('Summary');
+    })->name('summary');
+
 });
+
 
 // ✅ ต้องใช้ `auth.php` สำหรับ Authentication Routes (Register, Forgot Password, Reset Password)
 require __DIR__.'/auth.php';

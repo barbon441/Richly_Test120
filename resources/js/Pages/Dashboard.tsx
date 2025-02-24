@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage } from "@inertiajs/react";
 import Dropdown from "@/Components/Dropdown";
+import { Inertia } from "@inertiajs/inertia";
 // 🟡 กำหนด Type ของ Transaction
 interface Transaction {
     id: number;
@@ -242,13 +243,7 @@ export default function Dashboard() {
 
             {/* 🔹 ปุ่ม "รายละเอียด" + Dropdown Profile */}
             <div className="flex items-center space-x-4">
-                {/* ปุ่ม รายละเอียด */}
-                <Link
-                    href="/details"
-                    className="bg-white text-amber-500 px-3 py-1 rounded-lg shadow"
-                >
-                    รายละเอียด
-                </Link>
+
 
                 {/*{/* Dropdown Profile */}
                 <Dropdown>
@@ -280,8 +275,19 @@ export default function Dashboard() {
                         <Dropdown.Link href="/profile/edit">
                             Profile
                         </Dropdown.Link>
+
                         <Dropdown.Link href="/logout" method="post" as="button">
                             Log Out
+                        </Dropdown.Link>
+
+                        <Dropdown.Link href={route('add-budget')}>
+                            งบประมาณ
+                        </Dropdown.Link>
+
+
+
+                        <Dropdown.Link href="/summary">
+                            สรุปรายละเอียด
                         </Dropdown.Link>
                     </Dropdown.Content>
                 </Dropdown>
