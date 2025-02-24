@@ -5,7 +5,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TransactionController;
-
+use App\Http\Controllers\BudgetController;
 
 
 // ✅ หน้า Home
@@ -25,9 +25,9 @@ Route::middleware(['auth'])->group(function () {
     // ✅ หน้าแก้ไข Profile
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
 
-    Route::get('/add-budget', function () {
-        return Inertia::render('AddBudget');
-    })->name('add-budget');
+    Route::get('/budget', function () {
+        return Inertia::render('Budget'); // ✅ โหลด Budget.tsx เป็นหน้าหลัก
+    });
 
     Route::get('/summary', function () {
         return Inertia::render('Summary');

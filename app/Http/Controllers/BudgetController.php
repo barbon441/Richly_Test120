@@ -3,64 +3,161 @@
 namespace App\Http\Controllers;
 
 use App\Models\Budget;
-use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Log;
 
 class BudgetController extends Controller
 {
-    // ดึงข้อมูลงบประมาณทั้งหมด
-    public function index() {
-        return Inertia::render('AddBudget');
-    }
-    // บันทึกงบประมาณใหม่
+    // ✅ เพิ่มงบประมาณใหม่
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'amount_limit' => 'required|numeric|min:0',
-            'start_date' => 'required|date',  // ✅ ตรวจสอบวันที่เริ่มต้น
-            'end_date' => 'required|date|after_or_equal:start_date',  // ✅ ตรวจสอบวันที่สิ้นสุด
-        ]);
+        try {
+            Log::info("📥 Data received in Budget:", $request->all());
 
-         // ✅ เพิ่มข้อมูลงบประมาณ
-        $budget = Budget::create([
-            'user_id' => auth()->id(), // ✅ ดึง user_id จาก auth
-            'category_id' => $validated['category_id'],
-            'amount_limit' => $validated['amount_limit'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-        ]);
+            $validated = $request->validate([
+                'category_id'  => 'required|exists:categories,id',
+                'amount_limit' => 'required|numeric|min:0',
+                'start_date'   => 'required|date',
+                'end_date'     => 'required|date|after_or_equal:start_date',
+            ]);
 
-        return response()->json(['message' => 'บันทึกงบประมาณสำเร็จ!', 'budget' => $budget], 201);
+            $userId = Auth::id();
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+
+            $budget = Budget::create([
+                'user_id'      => $userId,
+                'category_id'  => $validated['category_id'],
+                'amount_limit' => $validated['amount_limit'],
+                'amount_spent' => 0,  // เริ่มต้นที่ 0
+                'start_date'   => $validated['start_date'],
+                'end_date'     => $validated['end_date'],
+            ]);
+
+            Log::info("✅ บันทึกงบประมาณสำเร็จ:", $budget->toArray());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'เพิ่มงบประมาณสำเร็จ!',
+                'budget'  => $budget
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error ในการบันทึกงบประมาณ: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function index(Request $request)
+    {
+        try {
+            $userId = Auth::id();
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+
+            // ✅ ดึงข้อมูลหมวดหมู่จากตาราง categories
+            $budgets = Budget::where('user_id', $userId)
+                ->join('categories', 'budgets.category_id', '=', 'categories.id')
+                ->select('budgets.*', 'categories.name as category_name') // ✅ เพิ่มชื่อหมวดหมู่
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'budgets' => $budgets
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    // ดึงข้อมูลงบประมาณที่เลือก
+    // ✅ ดึงข้อมูลงบประมาณเดิม
     public function show($id)
     {
-        return response()->json(Budget::findOrFail($id), 200);
+        try {
+            $budget = Budget::where('id', $id)
+                            ->where('user_id', Auth::id()) // ✅ ให้ดึงเฉพาะของ user นี้
+                            ->first();
+
+            if (!$budget) {
+                return response()->json(['success' => false, 'message' => 'ไม่พบนงบประมาณ'], 404);
+            }
+
+            return response()->json(['success' => true, 'budget' => $budget]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    // อัปเดตงบประมาณ
+    // ✅ อัปเดตงบประมาณ
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:0',
-        ]);
+        try {
+            $validated = $request->validate([
+                'category_id'  => 'required|integer|exists:categories,id',
+                'amount_limit' => 'required|numeric|min:0',
+                'start_date'   => 'required|date',
+                'end_date'     => 'required|date|after_or_equal:start_date',
+            ]);
 
-        $budget = Budget::findOrFail($id);
-        $budget->update(['amount' => $request->amount]);
+            $budget = Budget::where('id', $id)
+                            ->where('user_id', Auth::id()) // ✅ ให้แก้ไขเฉพาะของ user นี้
+                            ->first();
 
-        return response()->json($budget, 200);
+            if (!$budget) {
+                return response()->json(['success' => false, 'message' => 'ไม่พบนงบประมาณ'], 404);
+            }
+
+            $budget->update([
+                'category_id'  => $validated['category_id'],
+                'amount_limit' => $validated['amount_limit'],
+                'start_date'   => $validated['start_date'],
+                'end_date'     => $validated['end_date'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'อัปเดตงบประมาณสำเร็จ!',
+                'budget'  => $budget
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    // ลบงบประมาณ
+    // ✅ ลบงบประมาณ
     public function destroy($id)
-    {
-        $budget = Budget::findOrFail($id);
+{
+    try {
+        $budget = Budget::where('id', $id)->where('user_id', Auth::id())->first();
+
+        if (!$budget) {
+            return response()->json(['success' => false, 'message' => 'ไม่พบนงบประมาณ'], 404);
+        }
+
         $budget->delete();
 
-        return response()->json(['message' => 'Deleted successfully'], 200);
+        return response()->json(['success' => true, 'message' => 'ลบงบประมาณสำเร็จ!']);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+        ], 500);
     }
+}
+
+
 }

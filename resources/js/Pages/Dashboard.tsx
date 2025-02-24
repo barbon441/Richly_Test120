@@ -3,6 +3,8 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, usePage } from "@inertiajs/react";
 import Dropdown from "@/Components/Dropdown";
 import { Inertia } from "@inertiajs/inertia";
+
+
 // 🟡 กำหนด Type ของ Transaction
 interface Transaction {
     id: number;
@@ -280,11 +282,9 @@ export default function Dashboard() {
                             Log Out
                         </Dropdown.Link>
 
-                        <Dropdown.Link href={route('add-budget')}>
+                        <Dropdown.Link href="/budget">
                             งบประมาณ
                         </Dropdown.Link>
-
-
 
                         <Dropdown.Link href="/summary">
                             สรุปรายละเอียด
