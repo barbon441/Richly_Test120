@@ -87,17 +87,13 @@ class TransactionController extends Controller
             ]);
 
 
-            // ✅ อัปเดตงบประมาณและรายงาน
-            (new BudgetController())->updateBudget($transaction);
-            (new ReportsController())->updateReport(new Request(['transaction_date' => $validatedData['transaction_date']]));
-
-            $budgetController = new BudgetController();
-            $budgetController->updateBudget($transaction);
+              // ✅ เรียกใช้ ReportsController เพื่ออัปเดตข้อมูลรายงาน
+              app(ReportsController::class)->updateReport(new Request(['transaction_date' => $validatedData['transaction_date']]));
 
             // ✅ เรียก API อัปเดตรายงานหลังจากบันทึกธุรกรรมสำเร็จ
-            Http::timeout(5)->post('http://127.0.0.1:8000/api/reports/update', [
+            app(ReportsController::class)->updateReport(new Request([
                 'transaction_date' => $validatedData['transaction_date']
-            ]);
+            ]));
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
 
 
