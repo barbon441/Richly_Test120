@@ -191,7 +191,7 @@ export default function Dashboard() {
                     icon: t.icon ?? "❓",
                 };
             });
-
+            transactions.sort((a: Transaction, b: Transaction) => b.timestamp - a.timestamp);
             console.log("🔢 Transactions (หลังจากแปลงค่า):", transactions);
             setTransactions(transactions);
 

@@ -10,7 +10,8 @@ use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Report;
 use Illuminate\Support\Facades\Auth;
-
+use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\ReportsController;
 class TransactionController extends Controller
 {
     /**
@@ -85,15 +86,18 @@ class TransactionController extends Controller
                 'transaction_date'  => $validatedData['transaction_date'],
             ]);
 
-            // ✅ อัปเดตงบประมาณเฉพาะกรณีเป็นรายจ่าย
-            if ($validatedData['transaction_type'] === 'expense') {
-                $this->updateBudget($userId, $category->id, $validatedData['amount']);
-            }
+
+            // ✅ อัปเดตงบประมาณและรายงาน
+            (new BudgetController())->updateBudget($transaction);
+            (new ReportsController())->updateReport(new Request(['transaction_date' => $validatedData['transaction_date']]));
+
+            $budgetController = new BudgetController();
+            $budgetController->updateBudget($transaction);
+
             // ✅ เรียก API อัปเดตรายงานหลังจากบันทึกธุรกรรมสำเร็จ
-            Http::post(env('APP_URL') . '/api/reports/update', [
+            Http::timeout(5)->post('http://127.0.0.1:8000/api/reports/update', [
                 'transaction_date' => $validatedData['transaction_date']
             ]);
-
             Log::info("✅ ธุรกรรมถูกบันทึกสำเร็จ:", $transaction->toArray());
 
 

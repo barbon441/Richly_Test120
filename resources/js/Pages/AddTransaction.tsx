@@ -132,10 +132,17 @@ const handleSubmit = async () => {
     try {
         let response;
         if (transactionId) {
-            response = await axios.put(`/api/transactions/${transactionId}`, transactionData, { headers });
+            response = await axios.put(
+                `/api/transactions/${transactionId}`,
+                transactionData,
+                { headers }
+            );
         } else {
-            const API_URL = import.meta.env.VITE_APP_API_URL; // ✅ ดึงค่าจาก .env
-            response = await axios.post(`${API_URL}/api/reports/update`, transactionData, { headers });
+            response = await axios.post( 
+                `/api/transactions`,
+                transactionData,
+                { headers }
+            );
         }
 
         console.log("✅ Response จากเซิร์ฟเวอร์:", response.data);

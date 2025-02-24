@@ -21,12 +21,13 @@ export default function Login({
             onSuccess: (page) => {
                 console.log("🔑 Response จาก API:", page);
 
-                if (page.props.auth?.user) {
-                    // ✅ บันทึก Token ลง LocalStorage (ต้องได้รับจาก Backend)
-                    localStorage.setItem("auth_token", page.props.auth.token);
+                // ✅ เช็คว่ามี token หรือไม่
+                const token = (page.props.auth as any)?.token;
+                if (token) {
+                    localStorage.setItem("auth_token", token);
                     localStorage.setItem("user", JSON.stringify(page.props.auth.user));
 
-                    console.log("✅ Token ถูกบันทึก:", page.props.auth.token);
+                    console.log("✅ Token ถูกบันทึก:", token);
 
                     // ✅ เปลี่ยนเส้นทางไปยัง Dashboard
                     window.location.href = "/dashboard";
